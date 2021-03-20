@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 
-const { v4: uuidv4, validate } = require('uuid');
+const { v4: uuidv4 } = require('uuid');
+const { UUIDv4 } = require('uuid-v4-validator');
 
 const app = express();
 app.use(express.json());
@@ -9,21 +10,75 @@ app.use(cors());
 
 const users = [];
 
+
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+
+  const user = users.find((user) => user.username === username);
+
+  if (!user) {
+    return response.status(404).json({ error: "User not found" })
+  }
+
+  request.user = user;
+
+  return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const { user } = request;
+
+  if (user.pro === false) {
+    const todoCount = user.todos.length;
+    if (todoCount >= 10) {
+      return response.status(403).json({ error: "User can't add more items on the list" });
+    }
+  } 
+  
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const { id } = request.params;
+
+  if (!UUIDv4.validate(id)) {
+    return response.status(400).json({ error: "ID invalid" });
+  }
+
+  const user = users.find((user) => user.username === username);
+
+  if (user) {
+    const foundTodo = user.todos.find((todo) => todo.id = id);
+
+    if (!foundTodo) {
+      return response.status(404).json({ error: "To do item does not exists" });
+    } else {
+      request.user = user;
+      request.todo = foundTodo;
+      return next();
+    }
+  } else {
+    return response.status(404).json({ error: "User does not exists" });
+  }
 }
 
 function findUserById(request, response, next) {
-  // Complete aqui
-}
+  const { id } = request.params;
+
+  if (!UUIDv4.validate(id)) {
+    return response.status(404).json({ error: "ID invalid" });
+  }
+
+  const foundUser = users.find((user) => user.id === id);
+  
+  if (!foundUser) { 
+    return response.status(404).json({ error: "User does not exists" })  
+  }
+  
+  request.user = foundUser;
+  return next();  
+} 
 
 app.post('/users', (request, response) => {
   const { name, username } = request.body;
